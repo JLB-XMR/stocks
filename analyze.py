@@ -22,6 +22,7 @@ from data.models import GeopoliticalRisk
 from data.stocks import UNIVERSE
 from portfolios.moonshot import RETURN_ETAS, RETURN_SCENARIOS, build_moonshot_portfolio
 from portfolios.vci import build_vci_portfolio
+from bot.config import BotConfig
 from rebalance.dca import DCA_NEVER_RULES, decide_monthly_addition
 from risk.stress_test import (
     GEOPOLITICAL_ASSESSMENTS,
@@ -212,6 +213,37 @@ def cmd_risk(args: argparse.Namespace) -> None:
     print()
 
 
+def cmd_simulate(args: argparse.Namespace) -> None:
+    from bot.simulator import (
+        SYNTHETIC_SCENARIOS,
+        print_historical_replay,
+        print_stress_results,
+        print_synthetic_result,
+        replay_historical,
+        run_stress_tests,
+        run_synthetic,
+    )
+
+    config = BotConfig(dry_run=True, db_path=":memory:")
+
+    if args.mode == "stress":
+        results = run_stress_tests(config)
+        print_stress_results(results)
+    elif args.mode == "synthetic":
+        print(f"\n{'='*60}")
+        print("  SYNTHETIC DRIFT — All Scenarios")
+        print(f"{'='*60}")
+        for name in SYNTHETIC_SCENARIOS:
+            result = run_synthetic(config, name)
+            print_synthetic_result(result, name)
+        print()
+    else:  # "all" or default
+        results = replay_historical(config)
+        print_historical_replay(results)
+        stress = run_stress_tests(config)
+        print_stress_results(stress)
+
+
 def cmd_universe(_args: argparse.Namespace) -> None:
     print(f"\n{'='*60}")
     print("  Stock Universe — All Discussed (Apr 2-4, 2026)")
@@ -271,6 +303,15 @@ def main() -> None:
     p_risk = subparsers.add_parser("risk", help="Geopolitical risk assessment")
     p_risk.add_argument("ticker", nargs="?", help="Stock ticker (optional)")
     p_risk.set_defaults(func=cmd_risk)
+
+    # simulate
+    p_sim = subparsers.add_parser("simulate", help="Run bot simulation & stress tests")
+    p_sim.add_argument(
+        "mode", nargs="?", default="all",
+        choices=["all", "stress", "synthetic"],
+        help="Simulation mode (default: all)",
+    )
+    p_sim.set_defaults(func=cmd_simulate)
 
     # universe
     p_uni = subparsers.add_parser("universe", help="Show all stocks")

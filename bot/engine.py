@@ -108,11 +108,15 @@ def _generate_trades(
             )
             diff = max_order if diff > 0 else -max_order
 
+        # Estimate per-share price
+        if ticker in snapshot.positions and snapshot.positions[ticker].shares > 0:
+            estimated_price = current_value / snapshot.positions[ticker].shares
+        elif ticker in snapshot.positions:
+            estimated_price = snapshot.positions[ticker].avg_cost
+        else:
+            estimated_price = 0
+
         if diff > 0:
-            # Estimate shares (would need live price in production)
-            estimated_price = current_value / snapshot.positions[ticker].shares \
-                if ticker in snapshot.positions and snapshot.positions[ticker].shares > 0 \
-                else 0
             shares = int(diff / estimated_price) if estimated_price > 0 else 0
             if shares > 0:
                 trades.append(Trade(
@@ -123,9 +127,6 @@ def _generate_trades(
                     reason=f"Underweight by {abs(drift):.1%}",
                 ))
         elif diff < 0:
-            estimated_price = current_value / snapshot.positions[ticker].shares \
-                if ticker in snapshot.positions and snapshot.positions[ticker].shares > 0 \
-                else 0
             shares = int(abs(diff) / estimated_price) if estimated_price > 0 else 0
             if shares > 0:
                 trades.append(Trade(

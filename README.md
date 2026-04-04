@@ -41,6 +41,48 @@ python analyze.py risk ARQQ     # single stock
 python analyze.py universe
 ```
 
+## Bot Simulation (Accelerated Paper Trading)
+
+Validate the full bot pipeline locally without waiting for real market sessions.
+
+```bash
+# Full suite: historical replay + stress tests
+python analyze.py simulate
+
+# Guardrail stress tests only (9 tests)
+python analyze.py simulate stress
+
+# Synthetic drift scenarios (mild, heavy, crash, moonshot)
+python analyze.py simulate synthetic
+
+# Or run directly
+python -m bot.simulator              # all
+python -m bot.simulator --stress     # guardrails only
+python -m bot.simulator --synthetic crash   # single scenario
+python -m bot.simulator --all-synthetic     # all scenarios
+```
+
+### What it tests
+- **Historical replay**: 6 quarters (Oct '24 - Apr '26) through drift/trade pipeline
+- **Synthetic drift**: Injects artificial price moves to trigger every code path
+  - `mild`: modest divergence, just above 5% threshold
+  - `heavy`: one position +80%, another -40%
+  - `crash`: broad 15-25% selloff (should NOT rebalance — weights unchanged)
+  - `moonshot`: one position 5x breakout (tests position cap + redistribution)
+- **Guardrail stress tests** (9 tests):
+  - Kill switch triggers at -3%, doesn't false-trigger at -2%
+  - Position size cap enforced at 15%
+  - Empty portfolio handled gracefully
+  - Missing tickers detected
+  - SQLite logging verified
+  - Message formatting for all scenarios
+
+### Recommended workflow
+1. Run `python analyze.py simulate` — all 9 tests must pass
+2. Connect to IBKR paper account, run `python -m bot.main --once`
+3. Verify 2-3 live paper sessions over 2-3 days
+4. Switch to live with `DRY_RUN=false`
+
 ## IBKR Rebalancing Bot
 
 Automated quarterly rebalancing for the VCI portfolio via Interactive Brokers Gateway.
@@ -83,7 +125,9 @@ stocks/
 │   ├── engine.py           # Drift calculator + trade generator
 │   ├── executor.py         # Order executor + SQLite logger
 │   ├── notifier.py         # Telegram notifications
-│   └── main.py             # Bot scheduler
+│   ├── main.py             # Bot scheduler
+│   ├── simulator.py        # Historical replay + stress tests
+│   └── sim_data.py         # Quarterly price snapshots
 ├── .env.example
 ├── .gitignore
 └── requirements.txt
