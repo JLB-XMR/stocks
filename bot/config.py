@@ -23,21 +23,19 @@ class BotConfig:
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
 
-    # Portfolio targets (VCI)
+    # Portfolio targets (VCI — reallocated April 2026)
     tickers: list[str] = field(default_factory=lambda: [
-        "VZ", "C", "CMCSA", "PBR", "PLAB", "IPGP", "AGCO", "CNH", "TRMB",
+        "AMSC", "VZ", "PLAB", "CMCSA", "CNH", "PBR", "CODA",
     ])
     target_weights: dict[str, float] = field(default_factory=lambda: {
-        "VZ": 0.126,
-        "C": 0.091,
-        "CMCSA": 0.105,
-        "PBR": 0.101,
-        "PLAB": 0.088,
-        "IPGP": 0.096,
-        "AGCO": 0.096,
-        "CNH": 0.095,
-        "TRMB": 0.096,
-        "CASH": 0.107,
+        "AMSC": 0.167,
+        "VZ": 0.131,
+        "CNH": 0.130,
+        "CMCSA": 0.130,
+        "PLAB": 0.121,
+        "PBR": 0.113,
+        "CODA": 0.082,
+        "CASH": 0.126,
     })
 
     # Rebalancing

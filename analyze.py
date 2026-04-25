@@ -375,6 +375,17 @@ def cmd_simulate(args: argparse.Namespace) -> None:
         print_stress_results(stress)
 
 
+def cmd_reallocate(_args: argparse.Namespace) -> None:
+    from rebalance.vci_reallocate import run_reallocation
+    print(run_reallocation())
+
+
+def cmd_compare(_args: argparse.Namespace) -> None:
+    from backtest.comparison import compare_portfolios, run_ibkr_benchmark
+    print(compare_portfolios())
+    print(run_ibkr_benchmark())
+
+
 def cmd_universe(_args: argparse.Namespace) -> None:
     print(f"\n{'='*60}")
     print("  Stock Universe — All Discussed (Apr 2-4, 2026)")
@@ -454,6 +465,14 @@ def main() -> None:
         help="Simulation mode (default: all)",
     )
     p_sim.set_defaults(func=cmd_simulate)
+
+    # reallocate
+    p_realloc = subparsers.add_parser("reallocate", help="VCI reallocation plan for IBKR portfolio")
+    p_realloc.set_defaults(func=cmd_reallocate)
+
+    # compare
+    p_compare = subparsers.add_parser("compare", help="Compare thesis vs actual IBKR portfolio")
+    p_compare.set_defaults(func=cmd_compare)
 
     # universe
     p_uni = subparsers.add_parser("universe", help="Show all stocks")

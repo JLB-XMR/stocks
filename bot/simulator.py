@@ -149,22 +149,22 @@ def replay_historical(config: BotConfig) -> list[SimQuarterResult]:
 SYNTHETIC_SCENARIOS = {
     "mild": {
         "description": "Two positions drift modestly in opposite directions",
-        "price_overrides": {"VZ": 62.00, "CMCSA": 30.00},  # VZ up ~44%, CMCSA down 25%
+        "price_overrides": {"VZ": 62.00, "CMCSA": 21.00},
     },
     "heavy": {
         "description": "Two positions diverge sharply (one +80%, one -40%)",
-        "price_overrides": {"C": 117.00, "PBR": 9.60},
+        "price_overrides": {"AMSC": 91.00, "PBR": 12.05},
     },
     "crash": {
         "description": "Broad selloff: all positions drop 15-25%",
         "price_overrides": {
-            "VZ": 36.55, "C": 55.25, "CMCSA": 30.00, "PBR": 12.80,
-            "PLAB": 17.60, "IPGP": 63.75, "AGCO": 80.00, "CNH": 9.60, "TRMB": 44.00,
+            "AMSC": 40.42, "VZ": 39.51, "PLAB": 32.56, "CMCSA": 22.39,
+            "CNH": 8.50, "PBR": 16.06, "CODA": 9.23,
         },
     },
     "moonshot": {
         "description": "One position 5x (simulates breakout)",
-        "price_overrides": {"PLAB": 110.00},  # PLAB 5x from entry
+        "price_overrides": {"PLAB": 203.50},
     },
 }
 
@@ -231,11 +231,11 @@ def run_stress_tests(config: BotConfig) -> list[StressTestResult]:
 
     # Test 2: Position size cap (>15% of portfolio)
     total = 1000.0
-    cash = total * config.target_weights.get("CASH", 0.107)
+    cash = total * config.target_weights.get("CASH", 0.126)
     shares = compute_initial_shares(config, total)
     # Make PLAB massively overweight by inflating its price
     prices = dict(ENTRY_PRICES)
-    prices["PLAB"] = 200.00  # ~9x entry -> way overweight
+    prices["PLAB"] = 400.00
     snapshot = build_snapshot_from_prices(prices, shares, cash)
     result = calculate_drift(snapshot, config)
     # Check that no single trade exceeds 15% of portfolio
@@ -261,12 +261,12 @@ def run_stress_tests(config: BotConfig) -> list[StressTestResult]:
     ))
 
     # Test 4: Missing ticker (position exists in config but not in snapshot)
-    partial_prices = {"VZ": 49.39, "C": 115.39}  # only 2 of 9
-    partial_shares = {"VZ": 2.93, "C": 1.4}
+    partial_prices = {"VZ": 49.39, "AMSC": 50.52}  # only 2 of 7
+    partial_shares = {"VZ": 2.0, "AMSC": 3.0}
     partial_snap = build_snapshot_from_prices(partial_prices, partial_shares, 500)
     partial_result = calculate_drift(partial_snap, config)
     results.append(StressTestResult(
-        "Missing tickers: 7 of 9 positions absent",
+        "Missing tickers: 5 of 7 positions absent",
         partial_result.needs_rebalance,
         f"Drift: {partial_result.max_drift:.1%}, trades: {len(partial_result.trades)}"
         + " (correctly detected massive drift)",
@@ -310,7 +310,7 @@ def run_stress_tests(config: BotConfig) -> list[StressTestResult]:
 
     # Test 8: Extreme drift (one position = 90% of portfolio)
     extreme_prices = dict(ENTRY_PRICES)
-    extreme_prices["C"] = 5000.00  # absurd price
+    extreme_prices["AMSC"] = 5000.00  # absurd price
     extreme_snap = build_snapshot_from_prices(extreme_prices, shares, cash)
     extreme_result = calculate_drift(extreme_snap, config)
     results.append(StressTestResult(

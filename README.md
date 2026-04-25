@@ -3,17 +3,16 @@ Investment portfolio analysis and automated rebalancing system.
 
 ## Portfolios
 
-### Portfolio 1 — Value Convergence Index (VCI)
-9 stocks + 10% cash. EUR 1,000 base. Quarterly rebalancing.
+### Portfolio — VCI Reallocated (April 2026)
+7 positions + 13% cash. Quarterly rebalancing. EUR 800/month DCA.
 
 **Thesis:** Cheap entry on unglamorous, cash-generating businesses that become critical infrastructure as AI, energy transition, and food security converge — priced as if none of that transformation happens.
 
-Holdings: VZ, C, CMCSA, PBR, PLAB, IPGP, AGCO, CNH, TRMB
+Holdings: AMSC (17%), VZ (13%), CNH (13%), CMCSA (13%), PLAB (12%), PBR (11%), CODA (8%), Cash (13%)
 
-### Portfolio 2 — $1,500 Moonshot
-Target 50-75x over 5-7 years. Three tiers: moonshots, bridge, cash.
-
-Holdings: ARQQ (41%), POET (22%), NNOX (10%), AMSC (9%), PLAB (8%), Cash (10%)
+### Original Portfolios (Historical)
+- **VCI (Oct 2024):** VZ, C, CMCSA, PBR, PLAB, IPGP, AGCO, CNH, TRMB — EUR 1,000 base
+- **Moonshot:** ARQQ 41%, POET 22%, NNOX 10%, AMSC 9%, PLAB 8%, Cash 10% — $1,500 base
 
 ## Usage
 
@@ -42,6 +41,12 @@ python analyze.py risk ARQQ     # single stock
 
 # Full stock universe
 python analyze.py universe
+
+# VCI reallocation plan (rebuild IBKR portfolio with VCI thesis)
+python analyze.py reallocate
+
+# Compare thesis vs actual IBKR portfolio
+python analyze.py compare
 
 # Google Sheets dashboard
 python analyze.py dashboard --credentials key.json --share you@email.com
@@ -160,7 +165,7 @@ python -m bot.main          # scheduled (weekdays 9:30 AM)
 
 ```
 stocks/
-├── analyze.py              # CLI entry point (10 commands)
+├── analyze.py              # CLI entry point (12 commands)
 ├── data/
 │   ├── models.py           # Core data models
 │   └── stocks.py           # Stock universe (16 stocks)
@@ -169,10 +174,12 @@ stocks/
 │   └── moonshot.py         # Moonshot portfolio definition
 ├── backtest/
 │   ├── engine.py           # Backtest + forward simulation
-│   └── benchmarks.py       # 7 index benchmarks + comparison metrics
+│   ├── benchmarks.py       # 7 index benchmarks + comparison metrics
+│   └── comparison.py       # Thesis vs actual IBKR comparison
 ├── rebalance/
 │   ├── dca.py              # DCA decision tree
-│   └── quarterly.py        # Quarterly rebalance rules
+│   ├── quarterly.py        # Quarterly rebalance rules
+│   └── vci_reallocate.py   # VCI reallocation engine
 ├── risk/
 │   └── stress_test.py      # Geopolitical + loss-cutting rules
 ├── dashboard/
