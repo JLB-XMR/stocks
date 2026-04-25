@@ -27,6 +27,9 @@ python analyze.py portfolio moonshot
 # VCI 18-month backtest (Oct 2024 - Apr 2026)
 python analyze.py backtest
 
+# Backtest with benchmark comparison (7 indexes)
+python analyze.py backtest-bench
+
 # Moonshot return scenarios (Bull/Base/Bear)
 python analyze.py scenarios
 
@@ -39,7 +42,59 @@ python analyze.py risk ARQQ     # single stock
 
 # Full stock universe
 python analyze.py universe
+
+# Google Sheets dashboard
+python analyze.py dashboard --credentials key.json --share you@email.com
+python analyze.py dashboard --credentials key.json --update SPREADSHEET_ID
 ```
+
+## Benchmark Comparison
+
+Compares VCI portfolio against 7 major indexes:
+
+| Index | Ticker | What it measures |
+|-------|--------|-----------------|
+| S&P 500 | SPX | US large-cap |
+| NASDAQ Composite | IXIC | US tech-heavy |
+| DJIA | DJI | US blue-chip |
+| Russell 2000 | RUT | US small-cap |
+| MSCI World | MXWO | Global developed |
+| MSCI Emerging Markets | MXEF | Emerging markets |
+| Bloomberg US Agg Bond | AGG | US investment-grade bonds |
+
+Metrics computed: alpha, beta, Sharpe ratio, max drawdown, volatility, correlation, tracking error, information ratio.
+
+```bash
+python analyze.py backtest-bench
+```
+
+## Google Sheets Dashboard
+
+Creates a 6-sheet dashboard:
+1. **Portfolio Overview** — Both portfolios with positions, weights, returns
+2. **Benchmark Comparison** — VCI vs all 7 indexes with full metrics
+3. **Quarterly Performance** — Quarter-by-quarter VCI vs all indexes
+4. **Risk Dashboard** — Geopolitical assessments, political calendar, loss-cutting rules
+5. **Moonshot Scenarios** — Bull/Base/Bear projections with ETAs
+6. **Stock Universe** — All 16 stocks with thesis and metadata
+
+### Setup
+1. Create a Google Cloud project, enable the Sheets API
+2. Create a service account, download the JSON key
+3. Add `GOOGLE_SHEETS_CREDENTIALS=/path/to/key.json` to `.env`
+4. Run `python analyze.py dashboard --credentials key.json --share you@email.com`
+
+## Claude Code Agents
+
+Three custom agents in `.claude/agents/` for use as subagents:
+
+| Agent | What it does |
+|-------|-------------|
+| `backtest-runner` | Replays historical quarters, runs forward simulations, benchmarks against all 7 indexes |
+| `risk-checker` | Evaluates stocks against loss-cutting rules, geopolitical stress tests, risk benchmarks vs indexes |
+| `portfolio-tracker` | Tracks portfolio state, DCA decisions, rebalancing, creates/updates Google Sheets dashboard |
+
+All three can benchmark against indexes and export to Google Sheets.
 
 ## Bot Simulation (Accelerated Paper Trading)
 
@@ -105,7 +160,7 @@ python -m bot.main          # scheduled (weekdays 9:30 AM)
 
 ```
 stocks/
-├── analyze.py              # CLI entry point
+├── analyze.py              # CLI entry point (10 commands)
 ├── data/
 │   ├── models.py           # Core data models
 │   └── stocks.py           # Stock universe (16 stocks)
@@ -113,12 +168,15 @@ stocks/
 │   ├── vci.py              # VCI portfolio definition
 │   └── moonshot.py         # Moonshot portfolio definition
 ├── backtest/
-│   └── engine.py           # Backtest + forward simulation
+│   ├── engine.py           # Backtest + forward simulation
+│   └── benchmarks.py       # 7 index benchmarks + comparison metrics
 ├── rebalance/
 │   ├── dca.py              # DCA decision tree
 │   └── quarterly.py        # Quarterly rebalance rules
 ├── risk/
 │   └── stress_test.py      # Geopolitical + loss-cutting rules
+├── dashboard/
+│   └── sheets.py           # Google Sheets dashboard (6 sheets)
 ├── bot/
 │   ├── config.py           # Bot configuration
 │   ├── connector.py        # IBKR Gateway connector
@@ -128,6 +186,10 @@ stocks/
 │   ├── main.py             # Bot scheduler
 │   ├── simulator.py        # Historical replay + stress tests
 │   └── sim_data.py         # Quarterly price snapshots
+├── .claude/agents/
+│   ├── backtest-runner.md  # Backtest agent definition
+│   ├── risk-checker.md     # Risk checker agent definition
+│   └── portfolio-tracker.md # Portfolio tracker agent definition
 ├── .env.example
 ├── .gitignore
 └── requirements.txt

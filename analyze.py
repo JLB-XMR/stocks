@@ -13,10 +13,17 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 
 from tabulate import tabulate
 
+from backtest.benchmarks import (
+    INDEX_DATA,
+    VCI_AS_INDEX,
+    compare_to_all_indexes,
+    portfolio_to_index_quarters,
+)
 from backtest.engine import calculate_scenario_returns, get_vci_backtest
 from data.models import GeopoliticalRisk
 from data.stocks import UNIVERSE
@@ -213,6 +220,130 @@ def cmd_risk(args: argparse.Namespace) -> None:
     print()
 
 
+def cmd_backtest_bench(_args: argparse.Namespace) -> None:
+    bt = get_vci_backtest()
+    comparisons = compare_to_all_indexes(VCI_AS_INDEX)
+
+    print(f"\n{'='*80}")
+    print("  VCI Portfolio vs Market Indexes (Oct 2024 → Apr 2026)")
+    print(f"{'='*80}")
+    print()
+
+    # Summary table
+    rows = []
+    for c in comparisons:
+        rows.append([
+            c.index_name,
+            c.index_ticker,
+            f"{c.portfolio_total_return:+.1f}%",
+            f"{c.index_total_return:+.1f}%",
+            f"{c.alpha:+.1f}pp",
+            f"{c.portfolio_max_drawdown:.1f}%",
+            f"{c.index_max_drawdown:.1f}%",
+            f"{c.portfolio_sharpe:.2f}",
+            f"{c.index_sharpe:.2f}",
+            f"{c.beta:.2f}",
+        ])
+
+    print(tabulate(
+        rows,
+        headers=["Index", "Ticker", "VCI Ret", "Idx Ret", "Alpha",
+                 "VCI MDD", "Idx MDD", "VCI Shrp", "Idx Shrp", "Beta"],
+        tablefmt="simple",
+    ))
+    print()
+
+    # Detailed metrics
+    print("  Detailed Risk Metrics:")
+    detail_rows = []
+    for c in comparisons:
+        detail_rows.append([
+            c.index_name,
+            f"{c.portfolio_volatility:.1%}",
+            f"{c.index_volatility:.1%}",
+            f"{c.correlation:.2f}",
+            f"{c.tracking_error:.1%}",
+            f"{c.information_ratio:.2f}",
+        ])
+
+    print(tabulate(
+        detail_rows,
+        headers=["Index", "VCI Vol", "Idx Vol", "Corr", "Track Err", "Info Ratio"],
+        tablefmt="simple",
+    ))
+    print()
+
+    # Quarterly side-by-side with S&P 500
+    sp500 = INDEX_DATA["S&P 500"]
+    print("  Quarterly: VCI vs S&P 500:")
+    q_rows = []
+    for i, q in enumerate(bt.quarters):
+        idx_q = sp500[i]
+        spread = q.qoq_change - idx_q.qoq_return
+        q_rows.append([
+            q.date,
+            f"€{q.portfolio_value:,.0f}",
+            f"{q.qoq_change:+.1f}%",
+            f"{idx_q.value:,.0f}",
+            f"{idx_q.qoq_return:+.1f}%",
+            f"{spread:+.1f}pp",
+            q.key_driver,
+        ])
+
+    print(tabulate(
+        q_rows,
+        headers=["Quarter", "VCI", "VCI QoQ", "S&P", "S&P QoQ", "Spread", "Driver"],
+        tablefmt="simple",
+    ))
+
+    # Key takeaways
+    sp_comp = next(c for c in comparisons if c.index_name == "S&P 500")
+    bond_comp = next(c for c in comparisons if "Bond" in c.index_name)
+    print()
+    print("  Key Takeaways:")
+    print(f"    vs S&P 500:  {sp_comp.alpha:+.1f}pp alpha, "
+          f"{sp_comp.portfolio_max_drawdown:.1f}% vs {sp_comp.index_max_drawdown:.1f}% MDD")
+    if sp_comp.portfolio_sharpe > sp_comp.index_sharpe:
+        print(f"    Sharpe:      VCI ({sp_comp.portfolio_sharpe:.2f}) > S&P ({sp_comp.index_sharpe:.2f}) "
+              f"— better risk-adjusted returns")
+    else:
+        print(f"    Sharpe:      VCI ({sp_comp.portfolio_sharpe:.2f}) < S&P ({sp_comp.index_sharpe:.2f}) "
+              f"— worse risk-adjusted returns")
+    if bond_comp.portfolio_sharpe > bond_comp.index_sharpe:
+        print(f"    vs Bonds:    Equity risk compensated "
+              f"(VCI Sharpe {bond_comp.portfolio_sharpe:.2f} > AGG {bond_comp.index_sharpe:.2f})")
+    else:
+        print(f"    vs Bonds:    Equity risk NOT compensated "
+              f"(VCI Sharpe {bond_comp.portfolio_sharpe:.2f} < AGG {bond_comp.index_sharpe:.2f})")
+    print(f"    Beta:        {sp_comp.beta:.2f} (< 1 = less volatile than S&P)")
+    print(f"    Correlation: {sp_comp.correlation:.2f} to S&P 500")
+    print()
+
+
+def cmd_dashboard(args: argparse.Namespace) -> None:
+    from dashboard.sheets import create_dashboard
+
+    credentials = args.credentials
+    if not credentials:
+        credentials = os.getenv("GOOGLE_SHEETS_CREDENTIALS", "credentials.json")
+
+    try:
+        url = create_dashboard(
+            credentials_path=credentials,
+            sheet_id=args.update,
+            share_email=args.share,
+        )
+        print(f"\nDashboard URL: {url}")
+    except FileNotFoundError:
+        print(f"\nCredentials file not found: {credentials}")
+        print("To set up Google Sheets:")
+        print("  1. Create a Google Cloud project, enable Sheets API")
+        print("  2. Create a service account, download JSON key")
+        print("  3. Run: python analyze.py dashboard --credentials /path/to/key.json --share you@email.com")
+    except RuntimeError as e:
+        print(f"\n{e}")
+
+
 def cmd_simulate(args: argparse.Namespace) -> None:
     from bot.simulator import (
         SYNTHETIC_SCENARIOS,
@@ -303,6 +434,17 @@ def main() -> None:
     p_risk = subparsers.add_parser("risk", help="Geopolitical risk assessment")
     p_risk.add_argument("ticker", nargs="?", help="Stock ticker (optional)")
     p_risk.set_defaults(func=cmd_risk)
+
+    # backtest-bench
+    p_bench = subparsers.add_parser("backtest-bench", help="Backtest with index benchmarks")
+    p_bench.set_defaults(func=cmd_backtest_bench)
+
+    # dashboard
+    p_dash = subparsers.add_parser("dashboard", help="Create/update Google Sheets dashboard")
+    p_dash.add_argument("--update", metavar="SHEET_ID", help="Update existing spreadsheet")
+    p_dash.add_argument("--share", metavar="EMAIL", help="Email to share with")
+    p_dash.add_argument("--credentials", help="Path to service account JSON key")
+    p_dash.set_defaults(func=cmd_dashboard)
 
     # simulate
     p_sim = subparsers.add_parser("simulate", help="Run bot simulation & stress tests")

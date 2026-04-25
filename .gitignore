@@ -6,3 +6,4 @@ trades.db
 dist/
 build/
 .venv/
+credentials.json
